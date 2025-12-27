@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الأكاديمية الملكية | المتحف الإمبراطوري</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=El+Messiri:wght@400;700;900&display=swap');
+        
+        :root {
+            --royal-gold: #D4AF37;
+            --deep-gold: #B8860B;
+            --palace-black: #050505;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; font-family: 'El Messiri', sans-serif;
+            background: #000; color: var(--royal-gold);
+        }
+
+        #canvas-container { width: 100%; height: 100%; cursor: move; }
+
+        .royal-panel {
+            background: rgba(10, 10, 10, 0.95);
+            border: 2px solid var(--royal-gold);
+            box-shadow: 0 0 50px rgba(212, 175, 55, 0.2);
+            backdrop-filter: blur(15px);
+            border-radius: 30px;
+            transition: all 0.5s ease;
+        }
+
+        #interaction-panel {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%) translateY(120%);
+            width: 90%; max-width: 900px; z-index: 2000;
+        }
+
+        #interaction-panel.active { transform: translateX(-50%) translateY(0); }
+
+        .crown-marker {
+            position: absolute; width: 50px; height: 50px;
+            background: var(--royal-gold); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: black; font-size: 1.5rem; cursor: pointer;
+            box-shadow: 0 0 20px var(--royal-gold);
+            z-index: 1000; transition: transform 0.3s;
+        }
+        .crown-marker:hover { transform: scale(1.2) rotate(15deg); }
+
+        .tab-btn { opacity: 0.5; padding: 10px 20px; transition: 0.3s; font-weight: bold; }
+        .tab-btn.active { opacity: 1; border-bottom: 3px solid var(--royal-gold); color: white; }
+
+        #gate-screen {
+            position: fixed; inset: 0; z-index: 9999;
+            background: radial-gradient(circle, #1a1a1a, #000);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        .gold-glow { text-shadow: 0 0 20px rgba(212, 175, 55, 0.8); }
+
+        /* Loading Spinner */
+        .loader {
+            border: 4px solid #1a1a1a;
+            border-top: 4px solid var(--royal-gold);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- شاشة البوابة الملكية -->
+    <div id="gate-screen">
+        <div class="text-center">
+            <div class="text-7xl mb-6 animate-bounce">🏛️</div>
+            <h1 class="text-6xl md:text-8xl font-black text-yellow-500 mb-4 gold-glow">الأكاديمية الملكية</h1>
+            <p class="text-xl text-yellow-700 mb-12 tracking-widest uppercase">الإصدار الإمبراطوري المحصن</p>
+            <button id="enter-btn" class="px-16 py-5 bg-yellow-600 hover:bg-yellow-500 text-black font-black text-2xl rounded-full shadow-2xl transition-transform hover:scale-110">
+                فتح ممر التاريخ
+            </button>
+            <div class="mt-10 text-zinc-500 flex gap-6 justify-center text-sm">
+                <span><i class="fas fa-arrows-alt mr-2"></i>W A S D للتحرك</span>
+                <span><i class="fas fa-mouse-pointer mr-2"></i>اسحب الماوس للنظر</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- لوحة التفاعل -->
+    <div id="interaction-panel" class="royal-panel p-6 md:p-10">
+        <div class="flex items-center justify-between mb-6 border-b border-yellow-900/40 pb-4">
+            <div class="flex gap-4">
+                <button onclick="showTab('story')" id="tab-story" class="tab-btn active text-lg">الحكاية</button>
+                <button onclick="showTab('rules')" id="tab-rules" class="tab-btn text-lg">القواعد</button>
+                <button onclick="showTab('quiz')" id="tab-quiz" class="tab-btn text-lg">التحدي</button>
+            </div>
+            <h2 id="display-title" class="text-2xl font-black text-yellow-500">الأثر الملكي</h2>
+        </div>
+
+        <div class="h-60 overflow-y-auto px-2 mb-6 text-white text-xl leading-relaxed" id="content-area">
+            <!-- المحتوى يظهر هنا -->
+        </div>
+
+        <div class="flex gap-4">
+            <button id="speak-btn" class="flex-grow bg-gradient-to-r from-yellow-700 to-yellow-500 text-black font-black py-4 rounded-xl text-xl flex items-center justify-center gap-3">
+                <i class="fas fa-volume-up"></i> استمع للنطق الملكي
+            </button>
+            <button onclick="closeUI()" class="px-8 bg-zinc-900 text-zinc-400 rounded-xl font-bold hover:text-white">رجوع</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+    <div id="markers-layer"></div>
+
+    <script>
+        let scene, camera, renderer, clock;
+        let keys = {};
+        let mouse = { x: 0, y: 0, down: false };
+        let currentData = null;
+
+        const ARTIFACTS = [
+            { id: 'mask', name: 'قناع توت عنخ آمون', pos: [0, 0, -15], color: 0xD4AF37, info: null },
+            { id: 'nefertiti', name: 'تمثال نفرتيتي', pos: [-12, 0, -10], color: 0xFFDAB9, info: null },
+            { id: 'scribe', name: 'الكاتب الجالس', pos: [12, 0, -10], color: 0x8B4513, info: null }
+        ];
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.Fog(0x050505, 1, 45);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.7, 5);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            // إضاءة
+            scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+            const pLight = new THREE.PointLight(0xD4AF37, 2, 30);
+            pLight.position.set(0, 10, 0);
+            scene.add(pLight);
+
+            // أرضية
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(100, 100),
+                new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.2, metalness: 0.8 })
+            );
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            // آثار
+            ARTIFACTS.forEach(art => {
+                const group = new THREE.Group();
+                const stand = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 2), new THREE.MeshStandardMaterial({color: 0x111111}));
+                const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({color: art.color, emissive: art.color, emissiveIntensity: 0.3}));
+                mesh.position.y = 2.5;
+                group.add(stand); group.add(mesh);
+                group.position.set(...art.pos);
+                scene.add(group);
+
+                const div = document.createElement('div');
+                div.className = 'crown-marker';
+                div.innerHTML = '<i class="fas fa-crown"></i>';
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    loadArtifactInfo(art);
+                };
+                document.getElementById('markers-layer').appendChild(div);
+                art.el = div;
+                art.vPos = new THREE.Vector3(art.pos[0], art.pos[1] + 4, art.pos[2]);
+            });
+
+            // تحكم
+            window.addEventListener('keydown', e => keys[e.code] = true);
+            window.addEventListener('keyup', e => keys[e.code] = false);
+            
+            const cont = document.getElementById('canvas-container');
+            cont.addEventListener('mousedown', () => mouse.down = true);
+            window.addEventListener('mouseup', () => mouse.down = false);
+            window.addEventListener('mousemove', e => {
+                if(mouse.down && !currentData) {
+                    camera.rotation.y -= e.movementX * 0.003;
+                    camera.rotation.x -= e.movementY * 0.003;
+                    camera.rotation.x = Math.max(-1.2, Math.min(1.2, camera.rotation.x));
+                }
+            });
+
+            animate();
+        }
+
+        async function loadArtifactInfo(art) {
+            currentData = art;
+            const panel = document.getElementById('interaction-panel');
+            const area = document.getElementById('content-area');
+            document.getElementById('display-title').innerText = art.name;
+            area.innerHTML = "<div class='flex flex-col items-center py-10'><div class='loader mb-4'></div><p class='text-sm animate-pulse'>استحضار المعرفة الملكية...</p></div>";
+            panel.classList.add('active');
+
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-story').classList.add('active');
+
+            const apiKey = ""; 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            try {
+                const prompt = `تحدث عن ${art.name} بلهجة مصرية ملكية للأكاديمية الملكية. قدم البيانات بدقة في قالب JSON التالي: {"story": "الحكاية"، "rules": "القاعدة اللغوية"، "quiz": {"q": "السؤال"، "opts": ["اختيار1", "اختيار2"], "a": "الإجابة الصحيحة"}}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { 
+                            responseMimeType: "application/json"
+                        }
+                    })
+                });
+
+                if (!response.ok) throw new Error("Network issue");
+
+                const result = await response.json();
+                
+                // تنظيف النص وتأمينه قبل التحليل
+                let rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!rawText) throw new Error("Empty response");
+
+                const data = JSON.parse(rawText);
+                art.info = data;
+                
+                if (currentData === art) {
+                    showTab('story');
+                }
+
+                document.getElementById('speak-btn').onclick = () => {
+                    if (!art.info) return;
+                    window.speechSynthesis.cancel();
+                    const msg = new SpeechSynthesisUtterance(art.info.story);
+                    msg.lang = 'ar-EG';
+                    window.speechSynthesis.speak(msg);
+                };
+            } catch (e) {
+                console.error("AI Error:", e);
+                area.innerHTML = "<div class='text-center py-10 text-red-400'><i class='fas fa-exclamation-triangle mb-2 text-2xl'></i><p>تعذر الاتصال ببيت الحكمة الملكي. حاول مرة أخرى.</p></div>";
+            }
+        }
+
+        function showTab(type) {
+            const area = document.getElementById('content-area');
+            if (!currentData || !currentData.info) return;
+
+            const data = currentData.info;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const activeTab = document.getElementById('tab-' + type);
+            if (activeTab) activeTab.classList.add('active');
+
+            if(type === 'story') area.innerText = data.story;
+            if(type === 'rules') area.innerText = data.rules;
+            if(type === 'quiz' && data.quiz) {
+                area.innerHTML = `<p class='mb-4 font-bold text-yellow-500'>${data.quiz.q}</p>`;
+                data.quiz.opts.forEach(o => {
+                    const b = document.createElement('button');
+                    b.className = "w-full text-right p-4 mb-3 bg-zinc-800 border border-yellow-900/30 rounded-xl hover:bg-yellow-700 hover:text-black transition-all";
+                    b.innerText = o;
+                    b.onclick = () => {
+                        if(o === data.quiz.a) {
+                            b.className = "w-full text-right p-4 mb-3 bg-green-700 text-white rounded-xl border-none";
+                            b.innerHTML = `<i class='fas fa-check-circle ml-2'></i> إجابة ملكية صحيحة!`;
+                        } else {
+                            b.style.opacity = "0.3";
+                        }
+                    };
+                    area.appendChild(b);
+                });
+            }
+        }
+
+        function closeUI() {
+            document.getElementById('interaction-panel').classList.remove('active');
+            window.speechSynthesis.cancel();
+            currentData = null;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            if(!currentData) {
+                const speed = 6 * delta;
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                dir.y = 0; dir.normalize();
+                const side = new THREE.Vector3().crossVectors(camera.up, dir).normalize();
+
+                if(keys['KeyW']) camera.position.addScaledVector(dir, speed);
+                if(keys['KeyS']) camera.position.addScaledVector(dir, -speed);
+                if(keys['KeyA']) camera.position.addScaledVector(side, speed);
+                if(keys['KeyD']) camera.position.addScaledVector(side, -speed);
+            }
+
+            ARTIFACTS.forEach(art => {
+                const p = art.vPos.clone().project(camera);
+                if(p.z < 1 && Math.abs(p.x) < 0.95 && Math.abs(p.y) < 0.95) {
+                    art.el.style.display = 'flex';
+                    art.el.style.left = `${(p.x * 0.5 + 0.5) * window.innerWidth}px`;
+                    art.el.style.top = `${(p.y * -0.5 + 0.5) * window.innerHeight}px`;
+                } else {
+                    art.el.style.display = 'none';
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        document.getElementById('enter-btn').onclick = () => {
+            document.getElementById('gate-screen').style.display = 'none';
+            init();
+        };
+
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+    </script>
+</body>
+</html>
