@@ -3,25 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>متحف يلا مصري - الإصدار الملكي</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <title>أكاديمية الملكة نفرتيتي - المتحف الملكي الشامل</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Cairo', sans-serif; background: #000; color: white; }
-        canvas { display: block; }
-        
-        /* واجهة الدخول */
-        #entry-overlay {
-            position: fixed; inset: 0; background: radial-gradient(circle, #001d3d 0%, #000 100%);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 100; transition: opacity 0.8s ease;
+        :root {
+            --royal-gold: #D4AF37;
+            --deep-black: #0a0a0a;
+            --gold-gradient: linear-gradient(to bottom, #fcf6ba 0%, #bf953f 22%, #fbf5b7 45%, #aa771c 50%, #fcf6ba 100%);
         }
 
-        #ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; display: none; }
-        .interactive { pointer-events: auto; }
+        body {
+            font-family: 'Amiri', serif;
+            background-color: var(--deep-black);
+            background-image: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);
+            color: #fff;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
 
-        /* لوحة المعلومات */
-        #info-panel {
-            position: absolute; bottom: 10%; right: 5%; width: 350px;
-            background: rgba(0, 8, 20, 0.9); border: 2px solid #f
+        .royal-font { font-family: 'Aref Ruqaa', serif; }
+
+        .gold-text {
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .artifact-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            backdrop-filter: blur(10px);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border-radius: 2rem;
+            position: relative;
+        }
+
+        .artifact-card:hover {
+            border-color: var(--royal-gold);
+            transform: translateY(-12px);
+            background: rgba(212, 175, 55, 0.05);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 20px rgba(212, 175, 55, 0.2);
+        }
+
+        .search-container {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 50px;
+            padding: 0.6rem 2rem;
+            max-width: 650px;
+            margin: 2rem auto;
+            transition: 0.3s;
+        }
+
+        .search-container:focus-within {
+            border-color: var(--royal-gold);
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.2);
+        }
+
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.96);
+            backdrop-filter: blur(20px);
+        }
+
+        .btn-royal {
+            background: var(--gold-gradient);
+            color: #000;
+            font-weight: bold;
+            padding: 1.2rem 2.5rem;
+            border-radius: 1.2rem;
+            transition: 0.4s;
+            text-transform: uppercase;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn-royal:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 15px 30px rgba(212, 175, 55, 0.4);
+        }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
+    </style>
+</head>
+<body class="p-4 md:p-12">
+
+    <!-- Navigation -->
+    <nav class="flex justify-between items-center max-w-7xl mx-auto mb-20">
+        <div class="flex items-center gap-5">
+            <div class="w-16 h-16 bg-gradient-to-tr from-yellow-800 to-yellow-300 rounded-full flex items-center justify-center text-black text-3xl shadow-xl border-2 border-yellow-100/20">👑</div>
+            <div>
+                <h2 class="royal-font text-3xl gold-text leading-none">أكاديمية نفرتيتي</h2>
+                <span class="text-[11px] tracking-[0.5em] text-yellow-600/60 uppercase font-bold">The Royal Legacy</span>
+            </div>
+        </div>
+        <div class="flex gap-6 items-center">
+            <button onclick="toggleLang()" id="langBtn" class="px-6 py-2 border border-yellow-600/30 rounded-full text-sm hover:bg-yellow-600 hover:text-black transition-all">English</button>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="text-center mb-24 animate-fade-in">
+        <h1 class="royal-font text-7xl md:text-9xl mb-8 gold-text">متحف الأسرار</h1>
+        <p class="text-gray-400 max-w-3xl mx-auto text-xl md:text-2xl italic leading-relaxed font-light">
+            "يا جلالة الملكة نفرتيتي، كل قطعة هنا هي شاهد على خلودكِ. استكشفي كنوزكِ وفكي رموز التاريخ بحكمتكِ المعهودة."
+        </p>
+
+        <div class="search-container flex items-center">
+            <span class="text-yellow-600 ml-4 text-xl">🔍</span>
+            <input type="text" id="searchInput" oninput="filterArtifacts()" placeholder="ابحثي في خزائن الأسرار..." class="bg-transparent w-full outline-none text-white p-3 text-lg">
+        </div>
+    </header>
+
+    <!-- Grid -->
+    <main id="artifactGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 max-w-7xl mx-auto mb-32">
+        <!-- Artifacts injected via JS -->
+    </main>
+
+    <!-- Modal -->
+    <div id="artifactModal" class="fixed inset-0 modal-overlay hidden z-50 flex items-center justify-center p-6">
+        <div class="bg-[#0a0a0a] border-2 border-yellow-600/20 rounded-[3.5rem] max-w-2xl w-full p-12 relative shadow-2xl overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
+            <button onclick="closeModal()" class="absolute top-10 left-10 text-yellow-600/50 hover:text-white text-4xl transition-colors">&times;</button>
+            <div id="modalBody" class="text-center">
+                <!-- Content via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; // API Key injected at runtime
+        let currentLang = 'ar';
+
+        const artifacts = [
+            { id: 1, name: { ar: "قناع توت عنخ آمون", en: "Tutankhamun Mask" }, icon: "🏺", cat: "ملكي", riddle: "ملك شاب، ذهب خالص، ومقبرة لم تلمسها يد اللصوص لآلاف السنين.. من هو؟", answer: "توت عنخ آمون" },
+            { id: 2, name: { ar: "تمثال نفرتيتي", en: "Nefertiti Bust" }, icon: "👸", cat: "شخصيات", riddle: "الجميلة التي أتت، زوجة إخناتون، وصاحبة أجمل تمثال نصفي في التاريخ.. من هي؟", answer: "نفرتيتي" },
+            { id: 3, name: { ar: "حجر رشيد", en: "Rosetta Stone" }, icon: "📜", cat: "مخطوطات", riddle: "ثلاث لغات على حجر واحد كانت هي المفتاح لفهم لغز الفراعنة.. ما هو؟", answer: "حجر رشيد" },
+            { id: 4, name: { ar: "الهرم الأكبر", en: "Great Pyramid" }, icon: "📐", cat: "عمارة", riddle: "بناه الملك خوفو، وهو العجيبة الوحيدة الباقية من عجائب الدنيا السبع القديمة.. ما هو؟", answer: "خوفو" },
+            { id: 5, name: { ar: "تمثال أبو الهول", en: "The Sphinx" }, icon: "🦁", cat: "عمارة", riddle: "جسم أسد ورأس إنسان، يحرس الأهرامات منذ آلاف السنين.. من هو؟", answer: "ابو الهول" },
+            { id: 6, name: { ar: "مركب الشمس", en: "Solar Boat" }, icon: "⛵", cat: "مركبات", riddle: "سفينة خشبية ضخمة وجدت بجانب الهرم لتنقل الملك في رحلته السماوية.. ما هي؟", answer: "مركب الشمس" },
+            { id: 7, name: { ar: "مسلة حتشبسوت", en: "Hatshepsut Obelisk" }, icon: "🗼", cat: "عمارة", riddle: "إبرة حجرية عملاقة، تصل للسماء وتعلن عن انتصارات أقوى ملكات مصر.. ما هي؟", answer: "مسلة" },
+            { id: 8, name: { ar: "عين حورس", en: "Eye of Horus" }, icon: "👁️", cat: "رموز", riddle: "رمز الحماية والقوة الملكية، تسمى أيضاً 'الواجيت'.. ما هي؟", answer: "عين حورس" },
+            { id: 9, name: { ar: "مفتاح الحياة", en: "Ankh" }, icon: "🔑", cat: "رموز", riddle: "الرمز الذي يمسكه الآلهة والملوك للدلالة على الخلود.. ما اسمه؟", answer: "عنخ" },
+            { id: 10, name: { ar: "تمثال الكاتب", en: "The Seated Scribe" }, icon: "✍️", cat: "تماثيل", riddle: "يجلس بوقار، يحمل بردية وقلم، وعيناه تنظران إلى المستقبل.. من يمثل؟", answer: "الكاتب" },
+            { id: 11, name: { ar: "قلادة الجعران", en: "Scarab Amulet" }, icon: "🪲", cat: "مجوهرات", riddle: "رمز البعث والخلود، كان المصريون يضعونه فوق قلب المتوفى.. ما هو؟", answer: "الجعران" },
+            { id: 12, name: { ar: "عرش الذهب", en: "Golden Throne" }, icon: "🪑", cat: "أثاث", riddle: "كرسي العرش الخاص بتوت عنخ آمون، يصور الملك مع زوجته تحت الشمس.. ما هو؟", answer: "عرش" }
+        ];
+
+        function renderArtifacts(list = artifacts) {
+            const grid = document.getElementById('artifactGrid');
+            grid.innerHTML = list.map((art, i) => `
+                <div onclick="openArtifact(${art.id})" class="artifact-card p-12 flex flex-col items-center text-center animate-fade-in" style="animation-delay: ${i * 0.1}s">
+                    <span class="text-[10px] text-yellow-600 font-bold uppercase tracking-[0.3em] mb-6">${art.cat}</span>
+                    <div class="text-7xl mb-8 filter drop-shadow-[0_10px_10px_rgba(212,175,55,0.3)]">${art.icon}</div>
+                    <h3 class="royal-font text-2xl text-white mb-4">${art.name[currentLang]}</h3>
+                    <div class="w-12 h-1 bg-gradient-to-r from-transparent via-yellow-600/50 to-transparent rounded-full mb-6"></div>
+                    <p class="text-gray-500 text-xs italic tracking-widest uppercase">اكتشفي السر</p>
+                </div>
+            `).join('');
+        }
+
+        function filterArtifacts() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = artifacts.filter(a => a.name.ar.includes(term) || a.name.en.toLowerCase().includes(term) || a.cat.includes(term));
+            renderArtifacts(filtered);
+        }
+
+        async function speak(text) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Say with royal elegance in a warm Egyptian Arabic dialect: ${text}` }] }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
+                        }
+                    })
+                });
+                const data = await response.json();
+                const pcm = data.candidates[0].content.parts[0].inlineData.data;
+                playAudio(pcm);
+            } catch (e) { console.error("Audio failure", e); }
+        }
+
+        function playAudio(base64) {
+            const binary = atob(base64);
+            const array = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+            const blob = new Blob([createWavHeader(array.buffer, 24000), array], { type: 'audio/wav' });
+            new Audio(URL.createObjectURL(blob)).play();
+        }
+
+        function createWavHeader(buffer, sampleRate) {
+            const header = new ArrayBuffer(44);
+            const v = new DataView(header);
+            v.setUint32(0, 0x52494646, false); v.setUint32(4, 36 + buffer.byteLength, true);
+            v.setUint32(8, 0x57415645, false); v.setUint32(12, 0x666d7420, false);
+            v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+            v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
+            v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+            v.setUint32(36, 0x64617461, false); v.setUint32(40, buffer.byteLength, true);
+            return header;
+        }
+
+        function openArtifact(id) {
+            const art = artifacts.find(a => a.id === id);
+            const modal = document.getElementById('artifactModal');
+            const body = document.getElementById('modalBody');
+            modal.classList.remove('hidden');
+
+            body.innerHTML = `
+                <div class="text-9xl mb-10 filter drop-shadow-[0_0_25px_rgba(212,175,55,0.5)]">${art.icon}</div>
+                <h2 class="royal-font text-5xl gold-text mb-8">${art.name[currentLang]}</h2>
+                <div class="bg-white/5 p-10 rounded-[2.5rem] border border-yellow-600/10 mb-10">
+                    <p class="text-3xl text-gray-200 italic leading-relaxed font-light">"${art.riddle}"</p>
+                </div>
+                <div class="max-w-md mx-auto">
+                    <input type="text" id="ansIn" class="w-full bg-transparent border-b-2 border-yellow-600 text-center text-3xl py-4 mb-10 outline-none text-white focus:border-yellow-400 transition-all placeholder:text-gray-700" placeholder="أدخلي الحل يا جلالة الملكة...">
+                    <button onclick="checkAnswer(${art.id})" class="btn-royal w-full text-2xl tracking-widest">تقديم الحل للمحكمة الملكية</button>
+                    <p id="feedback" class="mt-10 font-bold text-2xl transition-all duration-500"></p>
+                </div>
+            `;
+            speak(`يا جلالة الملكة نفرتيتي، لغز ${art.name.ar} ينتظر نور بصيرتكِ.`);
+        }
+
+        function checkAnswer(id) {
+            const art = artifacts.find(a => a.id === id);
+            const val = document.getElementById('ansIn').value.trim();
+            const fb = document.getElementById('feedback');
+
+            if (val.includes(art.answer) || art.answer.includes(val)) {
+                fb.innerHTML = "✨ إجابة ملكية صحيحة! التاريخ ينحني لذكائكِ الفطري.";
+                fb.className = "mt-10 font-bold text-2xl text-green-400 animate-pulse";
+                speak("أحسنتِ يا نفرتيتي، هذا هو الذكاء الذي عهدناه في ملكات مصر العظيمات.");
+            } else {
+                fb.innerHTML = "❌ تريثي يا جلالة الملكة.. حاولي استحضار الحكمة مرة أخرى.";
+                fb.className = "mt-10 font-bold text-2xl text-red-500";
+                speak("معذرة يا جلالة الملكة، الإجابة تحتاج لمزيد من التأمل في عبق التاريخ.");
+            }
+        }
+
+        function closeModal() { document.getElementById('artifactModal').classList.add('hidden'); }
+        function toggleLang() {
+            currentLang = currentLang === 'ar' ? 'en' : 'ar';
+            document.getElementById('langBtn').innerText = currentLang === 'ar' ? 'English' : 'العربية';
+            renderArtifacts();
+        }
+
+        window.onload = () => renderArtifacts();
+    </script>
+</body>
+</html>
